@@ -1,70 +1,195 @@
-# Getting Started with Create React App
+# Cloud Bucket List
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+*A cloud-native, serverless system built to study data ownership, authentication boundaries, deployment determinism, and how real-world failures propagate across managed cloud infrastructure.*
 
-## Available Scripts
+---
 
-In the project directory, you can run:
 
-### `npm start`
+## Problem Statement
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+Even simple personal data systems hide significant complexity once they move beyond local state.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+Questions such as:
+- Who owns the data?
+- How is access enforced across services?
+- What fails when permissions or environments drift?
+- How do deployment and dependency decisions affect system reliability?
 
-### `npm test`
+are often ignored in beginner projects.
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+This project uses a deliberately simple product surface—a personal bucket list with optional images—to explore **real production concerns**: authentication boundaries, authorization enforcement, cloud storage permissions, CI/CD failures, and infrastructure-driven behavior.
 
-### `npm run build`
+The goal was not to build features, but to **understand how cloud-native systems behave under real constraints**.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+---
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## Design Goals
 
-### `npm run eject`
+1. **Enforce ownership at the infrastructure level**  
+   All access control is enforced by managed cloud services—not frontend logic.
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+2. **Decouple identity, API logic, and storage**  
+   Authentication, data access, and file storage are isolated layers to expose boundary failures.
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+3. **Prefer managed services over custom abstractions**  
+   Security, scalability, and correctness are enforced through configuration and policy.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+4. **Design for failure visibility**  
+   The system intentionally surfaces misconfigurations, CI failures, and environment drift.
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+5. **Keep the product surface minimal**  
+   UI simplicity ensures focus remains on backend behavior and system design.
 
-## Learn More
+6. **Treat deployment as part of the system**  
+   CI/CD, reproducibility, and environment alignment are first-class concerns.
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+---
 
-To learn React, check out the [React documentation](https://reactjs.org/).
 
-### Code Splitting
+## System Architecture
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+### High-Level Flow
 
-### Analyzing the Bundle Size
+1. React frontend hosted on **AWS Amplify**
+2. Authentication via **Amazon Cognito**
+3. Requests handled by **AWS AppSync (GraphQL)**
+4. Structured data stored in **DynamoDB**
+5. Images stored in **Amazon S3** with identity-based access
+6. Infrastructure provisioned via **Amplify CLI**
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+Each component is isolated, explicitly permissioned, and independently scalable.
 
-### Making a Progressive Web App
+---
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+### Component Overview
 
-### Advanced Configuration
+**Frontend (React + Amplify Hosting)**  
+Static client with no credentials or direct backend access. CI/CD integrated via GitHub.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+**Authentication (Amazon Cognito)**  
+Managed identity service issuing JWTs. No auth logic exists in application code.
 
-### Deployment
+**API Layer (AWS AppSync – GraphQL)**  
+Single entry point enforcing authorization rules and resolver-level access control.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+**Data Storage (DynamoDB)**  
+Serverless, low-latency storage with per-user ownership enforced by resolvers.
 
-### `npm run build` fails to minify
+**File Storage (S3)**  
+Binary data stored separately from structured data with IAM-based access control.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+**Infrastructure (Amplify CLI)**  
+Entire backend defined as code for reproducibility and environment consistency.
+
+---
+
+
+## Key Engineering Trade-offs
+
+### GraphQL vs REST
+- **Chosen:** GraphQL (AppSync)
+- **Gained:** Schema as contract, fine-grained authorization, precise data fetching
+- **Cost:** Higher conceptual complexity
+
+### Serverless vs Custom Backend
+- **Chosen:** Fully serverless
+- **Gained:** Automatic scaling, no server management
+- **Cost:** Harder debugging, less low-level control
+
+### DynamoDB vs Relational DB
+- **Chosen:** DynamoDB
+- **Gained:** Scalability, simple access patterns
+- **Cost:** No joins, upfront data modeling discipline
+
+### Cognito vs Custom Auth
+- **Chosen:** Cognito
+- **Gained:** Security by default, reduced attack surface
+- **Cost:** Limited customization, steeper learning curve
+
+### Infrastructure as Code vs Manual Setup
+- **Chosen:** Amplify CLI
+- **Gained:** Reproducibility, auditability
+- **Cost:** Abstracted infrastructure requires deeper understanding when debugging
+
+---
+
+
+## Authentication & Authorization Model
+
+- Authentication via **Cognito User Pools**
+- JWTs automatically attached to API requests
+- Authorization enforced at the **GraphQL schema level**
+- Owner-based access prevents cross-user data reads or writes
+
+Security is enforced **before** any resolver executes.
+
+---
+
+
+## Failure Modes & Limitations
+
+This system did not succeed on the first attempt.
+
+### CI/CD Failures (npm + Amplify)
+- Root cause: lockfile drift and transitive dependency mismatches
+- Resolution: strict dependency alignment and deterministic builds
+- Lesson: *If a build isn’t reproducible, it isn’t deployable*
+
+### Environment Drift
+- Local and cloud environments diverged during redeployments
+- Fixed by treating the cloud environment as authoritative
+
+### Windows Filesystem Constraints
+- `npm ci` failures due to file locks
+- Required manual cleanup and CI-first validation
+
+### System Convergence
+- Multiple failed deployments before stabilization
+- Success occurred without code changes—only system alignment
+
+---
+
+### Current Limitations
+
+- Owner-only authorization (no roles)
+- No rate limiting or abuse protection
+- No observability stack
+- Single-region deployment
+
+These limitations are intentional and documented.
+
+---
+
+
+## What I Learned & Future Work
+
+### What I Learned
+
+- Deployment is part of the system, not the final step
+- Most failures occur at boundaries, not inside code
+- Cloud abstractions reduce boilerplate, not responsibility
+- Failure is signal, not noise
+
+### Future Work
+
+- Role-based authorization and field-level auth
+- Observability (metrics, tracing, structured logs)
+- Cost-aware access patterns and caching
+- Multi-environment deployment strategy
+
+---
+
+
+## Final Reflection
+
+This project represents a transition:
+
+From  
+> “Can I build something?”
+
+To  
+> “Can I reason about a system when it breaks?”
+
+The deployed application is not the outcome.  
+The **engineering mindset** is.
