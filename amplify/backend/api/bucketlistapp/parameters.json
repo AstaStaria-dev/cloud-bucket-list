@@ -1,0 +1,11 @@
+{
+  "AppSyncApiName": "bucketlistapp",
+  "DynamoDBBillingMode": "PAY_PER_REQUEST",
+  "DynamoDBEnableServerSideEncryption": false,
+  "AuthCognitoUserPoolId": {
+    "Fn::GetAtt": [
+      "authbucketlistapp241490d6",
+      "Outputs.UserPoolId"
+    ]
+  }
+}

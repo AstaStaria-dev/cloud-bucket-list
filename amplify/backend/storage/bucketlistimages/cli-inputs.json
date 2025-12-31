@@ -1,0 +1,14 @@
+{
+  "resourceName": "bucketlistimages",
+  "policyUUID": "03d4730e",
+  "bucketName": "bucketlistapp611ea4d6e8c74472bbe5e38c1d15403a",
+  "storageAccess": "auth",
+  "guestAccess": [],
+  "authAccess": [
+    "CREATE_AND_UPDATE",
+    "READ",
+    "DELETE"
+  ],
+  "triggerFunction": "NONE",
+  "groupAccess": {}
+}

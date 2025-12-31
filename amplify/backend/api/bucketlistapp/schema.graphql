@@ -1,0 +1,9 @@
+type BucketItem
+  @model
+  @auth(rules: [{ allow: owner }]) {
+  id: ID!
+  title: String!
+  imageKey: String
+  createdAt: AWSDateTime
+}
+
