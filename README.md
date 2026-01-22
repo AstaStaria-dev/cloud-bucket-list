@@ -2,6 +2,9 @@
 
 *A cloud-native, serverless system built to study data ownership, authentication boundaries, deployment determinism, and how real-world failures propagate across managed cloud infrastructure.*
 
+## Live Demo
+https://main.d1c1cui76vaw5h.amplifyapp.com/
+
 ---
 
 
